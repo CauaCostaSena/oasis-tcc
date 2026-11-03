@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Plano {
+  id              Int       @id @default(autoincrement())
+  nome            String    @unique
+  limiteBuscasMes Int
+  limiteFavoritos Int
+  empresas        Empresa[]
+}
+
+// Uma conta por empresa; os recrutadores compartilham o mesmo login.
+model Empresa {
+  id         Int         @id @default(autoincrement())
+  nome       String
+  cnpj       String      @unique
+  email      String      @unique
+  senhaHash  String
+  planoId    Int
+  plano      Plano       @relation(fields: [planoId], references: [id])
+  criadoEm   DateTime    @default(now())
+  favoritos  Favorito[]
+  avaliacoes Avaliacao[]
+  buscas     Busca[]
+}
+
+// githubLogin identifica o candidato; o perfil em si vem do GitHub (ou do cache).
+model Favorito {
+  empresaId   Int
+  githubLogin String
+  criadoEm    DateTime @default(now())
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@id([empresaId, githubLogin])
+}
+
+model Avaliacao {
+  id          Int      @id @default(autoincrement())
+  empresaId   Int
+  githubLogin String
+  nota        Int?
+  texto       String   @db.Text
+  criadoEm    DateTime @default(now())
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId, githubLogin])
+}
+
+model Busca {
+  id          Int      @id @default(autoincrement())
+  empresaId   Int
+  linguagem   String?
+  localizacao String?
+  filtros     Json?
+  total       Int
+  // Hash de empresa + filtros + minuto: duas requisições simultâneas iguais gravam uma busca só.
+  chave       String?  @unique
+  criadoEm    DateTime @default(now())
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId, criadoEm])
+}
+
+// Cache dos dados públicos do GitHub para poupar o limite de requisições.
+model PerfilCache {
+  githubLogin  String   @id
+  dados        Json
+  atualizadoEm DateTime @updatedAt
+}
