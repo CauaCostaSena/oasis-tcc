@@ -8,6 +8,7 @@ export default function Login() {
   return (
     <FormularioAuth
       titulo="Entrar"
+      subtitulo="Bem-vindo de volta ao Oásis."
       acao={entrar}
       botao="Entrar"
       campos={[

@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { Octokit } from "octokit";
 import { db } from "./db";
+import { montarQuery, ORDENS, type Filtros } from "./filtros";
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
@@ -9,16 +10,9 @@ const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 export const LOGIN_VALIDO = /^[a-z\d](?:[a-z\d-]{0,38})$/i;
 
 export const POR_PAGINA = 12;
-// A busca do GitHub devolve no máximo 1000 resultados.
-export const MAX_PAGINAS = Math.floor(1000 / POR_PAGINA);
+// Poupa o limite de requisições do GitHub (compartilhado por todas as empresas); refine os filtros para ver mais.
+export const MAX_PAGINAS = 10;
 const TTL_MS = 24 * 60 * 60 * 1000;
-
-export type Filtros = {
-  linguagem?: string;
-  localizacao?: string;
-  minRepos?: number;
-  minSeguidores?: number;
-};
 
 // Só o que o GitHub devolveu; campos vazios continuam nulos, nunca inventados.
 export type Perfil = {
@@ -29,18 +23,16 @@ export type Perfil = {
   localizacao: string | null;
   repos: number;
   seguidores: number;
+  seguindo: number;
+  gists: number;
+  empresa: string | null;
+  site: string | null;
+  email: string | null;
+  twitter: string | null;
+  disponivel: boolean | null; // "available for hire" marcado no perfil
+  criadoEm: string | null;
   url: string;
 };
-
-export function montarQuery(f: Filtros): string {
-  const aspas = (s: string) => s.replace(/"/g, "");
-  const partes = ["type:user"];
-  if (f.linguagem) partes.push(`language:"${aspas(f.linguagem)}"`);
-  if (f.localizacao) partes.push(`location:"${aspas(f.localizacao)}"`);
-  if (f.minRepos) partes.push(`repos:>=${f.minRepos}`);
-  if (f.minSeguidores) partes.push(`followers:>=${f.minSeguidores}`);
-  return partes.join(" ");
-}
 
 /** Devolve do cache se tiver menos de 24h; senão consulta o GitHub e guarda, poupando o limite. */
 async function comCache<T>(chave: string, buscar: () => Promise<T>, ttl = TTL_MS): Promise<T> {
@@ -57,7 +49,8 @@ async function comCache<T>(chave: string, buscar: () => Promise<T>, ttl = TTL_MS
 
 export async function obterPerfil(login: string): Promise<Perfil | null> {
   try {
-    return await comCache(login, async () => {
+    // "p2:" = formato com os campos novos; entradas antigas do cache são ignoradas.
+    return await comCache(`p2:${login}`, async () => {
       const { data: u } = await octokit.rest.users.getByUsername({ username: login });
       return {
         login: u.login,
@@ -67,6 +60,14 @@ export async function obterPerfil(login: string): Promise<Perfil | null> {
         localizacao: u.location,
         repos: u.public_repos,
         seguidores: u.followers,
+        seguindo: u.following,
+        gists: u.public_gists,
+        empresa: u.company,
+        site: u.blog || null,
+        email: u.email,
+        twitter: u.twitter_username ?? null,
+        disponivel: u.hireable,
+        criadoEm: u.created_at,
         url: u.html_url,
       };
     });
@@ -85,11 +86,13 @@ export type Repo = {
   atualizado: string | null;
   url: string;
   fork: boolean;
+  topicos: string[];
+  arquivado: boolean;
 };
 
 // shortcut: só os 100 repositórios mais recentes (1 página), basta para o perfil; paginar se precisar de mais.
 export function obterRepos(login: string): Promise<Repo[]> {
-  return comCache(`repos:${login}`, async () => {
+  return comCache(`repos2:${login}`, async () => {
     const { data } = await octokit.rest.repos.listForUser({
       username: login,
       per_page: 100,
@@ -104,6 +107,8 @@ export function obterRepos(login: string): Promise<Repo[]> {
       atualizado: r.pushed_at ?? null,
       url: r.html_url,
       fork: r.fork,
+      topicos: r.topics ?? [],
+      arquivado: r.archived ?? false,
     }));
   });
 }
@@ -111,11 +116,12 @@ export function obterRepos(login: string): Promise<Repo[]> {
 export async function buscarCandidatos(f: Filtros, pagina: number) {
   const q = montarQuery(f);
   // Cache curto: a página refaz a busca a cada ação (ex.: favoritar) e o GitHub limita a 30 buscas/min.
-  const chave = `busca:${createHash("sha1").update(`${q}|${pagina}`).digest("hex")}`;
+  const [, sort, order] = f.ordem ? ORDENS[f.ordem] : [];
+  const chave = `busca:${createHash("sha1").update(`${q}|${f.ordem}|${pagina}`).digest("hex")}`;
   const { total, logins } = await comCache(
     chave,
     async () => {
-      const { data } = await octokit.rest.search.users({ q, per_page: POR_PAGINA, page: pagina });
+      const { data } = await octokit.rest.search.users({ q, sort, order, per_page: POR_PAGINA, page: pagina });
       return { total: data.total_count, logins: data.items.map((i) => i.login) };
     },
     10 * 60 * 1000,

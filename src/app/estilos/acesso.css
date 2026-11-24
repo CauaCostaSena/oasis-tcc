@@ -1,0 +1,20 @@
+/* Estilos específicos de: cadastro, login e perfis. Tokens e classes base ficam em globals.css. */
+
+.girando { animation: acesso-gira 0.8s linear infinite; }
+@keyframes acesso-gira { to { transform: rotate(360deg); } }
+
+/* Campo de PIN: um único input, dígitos bem espaçados e centralizados. */
+.pin-campo {
+  width: 100%; min-height: 3rem; text-align: center; font-size: 1.5rem; font-weight: 600;
+  letter-spacing: 0.7em; padding-left: 0.7em; /* compensa o espaço depois do último dígito */
+}
+.pin-campo::placeholder { letter-spacing: 0.7em; }
+
+/* Avatar de perfil: sem giro; só o anel e a opacidade respondem. */
+.perfil-avatar { transition: opacity var(--dur-2) ease, box-shadow var(--dur-2) ease, transform var(--dur-1) var(--ease-out); }
+button:active > .perfil-avatar { transform: scale(0.96); }
+
+@media (prefers-reduced-motion: reduce) {
+  .girando { animation-duration: 2s; }
+  .perfil-avatar { transition: none; }
+}

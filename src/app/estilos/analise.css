@@ -1,0 +1,57 @@
+/* Estilos específicos de: candidato, favoritos, comparações e semelhantes. Tokens e classes base ficam em globals.css. */
+
+/* Perfil: faixa de cor suave no lugar da capa em gradiente. */
+.an-capa { height: 5rem; background: linear-gradient(120deg, var(--primary-soft), color-mix(in srgb, var(--primary) 28%, var(--surface-2))); }
+
+/* Números do resumo: um destaque e os demais em linha, sem caixinhas iguais. */
+.an-numeros { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 2rem; }
+.an-numeros dd { font-variant-numeric: tabular-nums; }
+
+/* Lista de repositórios: linhas num único card, sem cada item subir e brilhar. */
+.an-linhas > li + li { border-top: 1px solid var(--border); }
+
+/* Rodapé colado ao card do favorito (pasta + comparar). */
+.an-fav-rodape {
+  display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0.5rem 0.25rem 0.75rem;
+  border: 1px solid var(--border); border-radius: var(--r-controle); background: var(--surface);
+}
+.an-fav-rodape select.field { border-color: transparent; background: transparent; padding-left: 0.25rem; }
+.an-fav-rodape select.field:hover:not(:focus) { border-color: var(--border); }
+
+/* Barra de ação que acompanha a rolagem em Favoritos. */
+.an-acao { position: sticky; bottom: 1rem; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; }
+
+/* Linha de comparação salva. */
+.an-linha { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; align-items: center; padding: 1rem 1.25rem; transition: background-color var(--dur-2) ease; }
+.an-linha:hover { background: color-mix(in srgb, var(--surface-2) 55%, var(--surface)); }
+.an-linha:focus-visible { outline-offset: -2px; }
+.an-linhas-comp > li + li { border-top: 1px solid var(--border); }
+@media (min-width: 40rem) { .an-linha { grid-template-columns: auto 1fr auto; } }
+
+/* Momento autoral dos gráficos: o radar abre a partir do centro e as barras crescem da esquerda. */
+@keyframes an-abre { from { opacity: 0; transform: scale(0.2); } }
+@keyframes an-cresce { from { transform: scaleX(0); } }
+.an-radar-serie { transform-origin: 0 0; animation: an-abre 700ms var(--ease-out) both; animation-delay: calc(var(--s, 0) * 90ms); }
+.an-barra { transform-origin: left center; animation: an-cresce 700ms var(--ease-out) both; animation-delay: calc(var(--s, 0) * 70ms + 120ms); }
+
+/* Seleção do modelo em Semelhantes. */
+.an-modelo { transition: border-color var(--dur-1) ease, background-color var(--dur-1) ease; }
+.an-modelo:has(:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* Estrelas da nota. */
+.an-estrela { transition: transform var(--dur-1) var(--ease-out), color var(--dur-1) ease; }
+.an-estrela:has(:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .an-radar-serie, .an-barra { animation: none; }
+  .an-estrela, .an-linha, .an-modelo { transition: none; }
+}
+
+/* Resumo de <details> sem o marcador nativo (o chevron é desenhado no JSX). */
+details.group > summary { list-style: none; }
+details.group > summary::-webkit-details-marker { display: none; }
+
+/* No celular a navegação fica fixa embaixo (cerca de 60px com bordas e respiro): a barra de comparar para acima dela. */
+@media (max-width: 47.99rem) {
+  .an-acao { bottom: calc(60px + 0.75rem + env(safe-area-inset-bottom)); }
+}

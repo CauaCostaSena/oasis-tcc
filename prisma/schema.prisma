@@ -12,6 +12,10 @@ model Plano {
   nome            String    @unique
   limiteBuscasMes Int
   limiteFavoritos Int
+  // -1 = ilimitado
+  limiteRecrutadores Int @default(2)
+  // Quantos candidatos cabem numa comparação
+  limiteComparar  Int       @default(2)
   empresas        Empresa[]
 }
 
@@ -28,6 +32,98 @@ model Empresa {
   favoritos  Favorito[]
   avaliacoes Avaliacao[]
   buscas     Busca[]
+  recrutadores Recrutador[]
+  pastas     Pasta[]
+  comparacoes Comparacao[]
+  notificacoes Notificacao[]
+}
+
+// Pasta criada pela empresa para organizar favoritos; excluir a pasta não exclui os favoritos.
+model Pasta {
+  id        Int        @id @default(autoincrement())
+  empresaId Int
+  nome      String
+  criadoEm  DateTime   @default(now())
+  empresa   Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  favoritos Favorito[]
+
+  @@index([empresaId])
+}
+
+// Perfil de um recrutador dentro do login da empresa; entra-se nele com um PIN de 4 dígitos.
+model Recrutador {
+  id         Int         @id @default(autoincrement())
+  empresaId  Int
+  nome       String
+  pinHash    String
+  criadoEm   DateTime    @default(now())
+  empresa    Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  avaliacoes Avaliacao[]
+  favoritos  Favorito[]
+  filtros    FiltroSalvo[]
+  comparacoes Comparacao[]
+  comentarios ComentarioComparacao[]
+  notificacoes Notificacao[]
+  // Notificações criadas depois desta data contam como não lidas para este perfil.
+  notificacoesVistasEm DateTime @default(now())
+
+  @@index([empresaId])
+}
+
+// Preferência de busca de um recrutador ("filtro personalizado"); `filtros` segue o tipo Filtros de lib/filtros.ts.
+model FiltroSalvo {
+  id           Int        @id @default(autoincrement())
+  recrutadorId Int
+  nome         String
+  filtros      Json
+  criadoEm     DateTime   @default(now())
+  recrutador   Recrutador @relation(fields: [recrutadorId], references: [id], onDelete: Cascade)
+
+  @@index([recrutadorId])
+}
+
+// Aviso para os outros recrutadores da empresa (ex.: candidato colocado numa pasta).
+model Notificacao {
+  id        Int         @id @default(autoincrement())
+  empresaId Int
+  autorId   Int?
+  texto     String
+  link      String?
+  criadoEm  DateTime    @default(now())
+  empresa   Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  autor     Recrutador? @relation(fields: [autorId], references: [id], onDelete: SetNull)
+
+  @@index([empresaId, criadoEm])
+}
+
+// Comparação salva: visível a toda a empresa, só o autor exclui. `dados` é a foto dos números no dia.
+model Comparacao {
+  id           Int         @id @default(autoincrement())
+  empresaId    Int
+  recrutadorId Int?
+  titulo       String
+  // Logins em minúsculas, ordenados e separados por vírgula: acha comparações repetidas.
+  logins       String
+  metricas     Json
+  dados        Json
+  criadoEm     DateTime    @default(now())
+  empresa      Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  recrutador   Recrutador? @relation(fields: [recrutadorId], references: [id], onDelete: SetNull)
+  comentarios  ComentarioComparacao[]
+
+  @@index([empresaId, criadoEm])
+}
+
+model ComentarioComparacao {
+  id           Int         @id @default(autoincrement())
+  comparacaoId Int
+  recrutadorId Int?
+  texto        String      @db.Text
+  criadoEm     DateTime    @default(now())
+  comparacao   Comparacao  @relation(fields: [comparacaoId], references: [id], onDelete: Cascade)
+  recrutador   Recrutador? @relation(fields: [recrutadorId], references: [id], onDelete: SetNull)
+
+  @@index([comparacaoId])
 }
 
 // githubLogin identifica o candidato; o perfil em si vem do GitHub (ou do cache).
@@ -35,7 +131,12 @@ model Favorito {
   empresaId   Int
   githubLogin String
   criadoEm    DateTime @default(now())
+  pastaId     Int?
+  // Quem salvou ou moveu por último
+  recrutadorId Int?
   empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  pasta       Pasta?   @relation(fields: [pastaId], references: [id], onDelete: SetNull)
+  recrutador  Recrutador? @relation(fields: [recrutadorId], references: [id], onDelete: SetNull)
 
   @@id([empresaId, githubLogin])
 }
@@ -44,10 +145,14 @@ model Avaliacao {
   id          Int      @id @default(autoincrement())
   empresaId   Int
   githubLogin String
+  recrutadorId Int?
   nota        Int?
+  // true = só o autor vê; false = todos os recrutadores da empresa
+  privada     Boolean  @default(false)
   texto       String   @db.Text
   criadoEm    DateTime @default(now())
   empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  recrutador  Recrutador? @relation(fields: [recrutadorId], references: [id], onDelete: SetNull)
 
   @@index([empresaId, githubLogin])
 }

@@ -6,14 +6,15 @@ import { connection } from "next/server";
 import { db } from "./db";
 
 const COOKIE = "oasis_sessao";
+const COOKIE_PERFIL = "oasis_recrutador";
 const DURACAO_S = 60 * 60 * 24 * 7;
 
 const assinar = (v: string) =>
   createHmac("sha256", process.env.SESSION_SECRET!).update(v).digest("base64url");
 
-export async function criarSessao(empresaId: number) {
-  const valor = `${empresaId}.${Math.floor(Date.now() / 1000) + DURACAO_S}`;
-  (await cookies()).set(COOKIE, `${valor}.${assinar(valor)}`, {
+async function gravar(nome: string, id: number) {
+  const valor = `${id}.${Math.floor(Date.now() / 1000) + DURACAO_S}`;
+  (await cookies()).set(nome, `${valor}.${assinar(valor)}`, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -22,13 +23,9 @@ export async function criarSessao(empresaId: number) {
   });
 }
 
-export async function encerrarSessao() {
-  (await cookies()).delete(COOKIE);
-}
-
-/** Id da empresa logada, ou null se a sessão não existir, for adulterada ou expirou. */
-export async function empresaIdAtual(): Promise<number | null> {
-  const c = (await cookies()).get(COOKIE)?.value;
+/** Id guardado no cookie, ou null se não existir, for adulterado ou expirou. */
+async function ler(nome: string): Promise<number | null> {
+  const c = (await cookies()).get(nome)?.value;
   const partes = c?.split(".");
   if (!partes || partes.length !== 3) return null;
   const [id, exp, sig] = partes;
@@ -40,10 +37,42 @@ export async function empresaIdAtual(): Promise<number | null> {
   return Number(id);
 }
 
-/** Empresa logada; sem sessão válida, redireciona para o login. */
-export async function empresaAtual() {
+export async function criarSessao(empresaId: number) {
+  await gravar(COOKIE, empresaId);
+  (await cookies()).delete(COOKIE_PERFIL); // novo login: escolher o perfil de novo
+}
+
+export const entrarComoRecrutador = (id: number) => gravar(COOKIE_PERFIL, id);
+export async function sairDoPerfil() {
+  (await cookies()).delete(COOKIE_PERFIL);
+}
+
+export async function encerrarSessao() {
+  const c = await cookies();
+  c.delete(COOKIE);
+  c.delete(COOKIE_PERFIL);
+}
+
+export const empresaIdAtual = () => ler(COOKIE);
+
+/** Empresa logada (sem exigir perfil); sem sessão válida, redireciona para o login. */
+export async function empresaSemPerfil() {
   const id = await empresaIdAtual();
-  const empresa = id && (await db.empresa.findUnique({ where: { id }, include: { plano: true } }));
+  const empresa =
+    id &&
+    (await db.empresa.findUnique({
+      where: { id },
+      include: { plano: true, recrutadores: { orderBy: { id: "asc" } } },
+    }));
   if (!empresa) redirect("/login");
   return empresa;
+}
+
+/** Empresa + recrutador ativo. Sem perfil escolhido (ou de outra empresa), vai para /perfis. */
+export async function empresaAtual() {
+  const empresa = await empresaSemPerfil();
+  const rid = await ler(COOKIE_PERFIL);
+  const recrutador = empresa.recrutadores.find((r) => r.id === rid);
+  if (!recrutador) redirect("/perfis");
+  return { ...empresa, recrutador };
 }

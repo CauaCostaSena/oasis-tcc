@@ -1,33 +1,23 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ArrowLeft, ArrowRight, EyeOff, SearchX } from "lucide-react";
 import CardCandidato from "@/components/CardCandidato";
+import Carregando from "@/components/Carregando";
+import Spotlight from "@/components/Spotlight";
 import { executarBusca } from "@/lib/busca";
-import { db } from "@/lib/db";
-import { MAX_PAGINAS, type Filtros } from "@/lib/github";
+import { filtrosDaUrl, filtrosParaParams, temCriterio } from "@/lib/filtros";
+import { MAX_PAGINAS, POR_PAGINA } from "@/lib/github";
+import { favoritosDe, filtrosSalvos } from "@/lib/preferencias";
 import { empresaAtual } from "@/lib/session";
 
 export const metadata = { title: "Buscar candidatos — Oásis" };
 
-const LINGUAGENS = [
-  "Python", "JavaScript", "TypeScript", "Java", "C#", "PHP", "Go", "Rust",
-  "Kotlin", "Swift", "Ruby", "C++", "C", "Dart",
-];
-
 type Params = Record<string, string | string[] | undefined>;
-
-const texto = (v: Params[string]) => (typeof v === "string" ? v.trim().slice(0, 60) : "");
-const inteiro = (v: Params[string], max: number) => {
-  const n = parseInt(texto(v), 10);
-  return Number.isFinite(n) && n > 0 ? Math.min(n, max) : undefined;
-};
-
-const campo =
-  "mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 outline-none focus:border-primary focus:ring-2 focus:ring-primary-soft";
 
 export default function Busca({ searchParams }: PageProps<"/busca">) {
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-10">
-      <Suspense fallback={<p className="text-muted">Carregando...</p>}>
+      <Suspense fallback={<Carregando cards={6} />}>
         <Conteudo searchParams={searchParams} />
       </Suspense>
     </main>
@@ -39,20 +29,15 @@ async function Conteudo({ searchParams }: { searchParams: Promise<Params> }) {
   const sp = await searchParams;
   const empresa = await empresaAtual();
 
-  const filtros: Filtros = {
-    linguagem: LINGUAGENS.includes(texto(sp.linguagem)) ? texto(sp.linguagem) : undefined,
-    localizacao: texto(sp.localizacao) || undefined,
-    minRepos: inteiro(sp.minRepos, 10000),
-    minSeguidores: inteiro(sp.minSeguidores, 1000000),
-  };
-  const pagina = inteiro(sp.pagina, MAX_PAGINAS) ?? 1;
+  const filtros = filtrosDaUrl(sp);
+  const pagina = Math.min(Math.max(parseInt(String(sp.pagina), 10) || 1, 1), MAX_PAGINAS);
   const buscou = Boolean(sp.buscar);
-  const temCriterio = Boolean(filtros.linguagem || filtros.localizacao);
+  const mostrarSalvos = sp.salvos === "1";
 
   let erro: string | undefined;
   let r: Awaited<ReturnType<typeof executarBusca>>["resultado"];
-  if (buscou && !temCriterio) {
-    erro = "Escolha uma linguagem ou informe uma localização.";
+  if (buscou && !temCriterio(filtros)) {
+    erro = "Digite um nome ou escolha pelo menos uma linguagem ou região.";
   } else if (buscou) {
     try {
       ({ erro, resultado: r } = await executarBusca(empresa, filtros, pagina));
@@ -65,57 +50,47 @@ async function Conteudo({ searchParams }: { searchParams: Promise<Params> }) {
     }
   }
 
-  const favoritos = new Set(
-    r
-      ? (
-          await db.favorito.findMany({
-            where: { empresaId: empresa.id, githubLogin: { in: r.perfis.map((p) => p.login) } },
-          })
-        ).map((f) => f.githubLogin)
-      : [],
-  );
+  // Quem a empresa já salvou não volta como indicação, a menos que o switch "Mostrar já salvos" esteja ligado.
+  const salvos = r ? await favoritosDe(empresa.id, r.perfis.map((p) => p.login)) : new Map<string, string>();
+  const visiveis = r ? (mostrarSalvos ? r.perfis : r.perfis.filter((p) => !salvos.has(p.login))) : [];
+  const ocultos = r ? r.perfis.length - visiveis.length : 0;
 
-  const qs = (p: number) => {
-    const u = new URLSearchParams({ buscar: "1", pagina: String(p) });
-    for (const [k, v] of Object.entries(filtros)) if (v) u.set(k, String(v));
+  const qs = (p: number, verSalvos = mostrarSalvos) => {
+    const u = filtrosParaParams(filtros);
+    u.set("buscar", "1");
+    if (p > 1) u.set("pagina", String(p));
+    if (verSalvos) u.set("salvos", "1");
     return `/busca?${u}`;
   };
 
   return (
     <>
-      <h1 className="text-2xl font-bold">Buscar candidatos</h1>
+      <h1 className="text-3xl font-bold sm:text-4xl">Buscar candidatos</h1>
+      <p className="subtitulo mt-2">Por nome, usuário, linguagem ou região, a partir de dados públicos do GitHub.</p>
 
-      <form className="mt-6 grid gap-4 rounded-xl border border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-5">
-        <input type="hidden" name="buscar" value="1" />
-        <label className="text-sm font-medium">
-          Linguagem
-          <select name="linguagem" defaultValue={filtros.linguagem ?? ""} className={campo}>
-            <option value="">Qualquer</option>
-            {LINGUAGENS.map((l) => (
-              <option key={l}>{l}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm font-medium">
-          Localização
-          <input name="localizacao" defaultValue={filtros.localizacao} placeholder="Ex.: Brasil" className={campo} />
-        </label>
-        <label className="text-sm font-medium">
-          Mín. repositórios
-          <input name="minRepos" type="number" min={0} defaultValue={filtros.minRepos} className={campo} />
-        </label>
-        <label className="text-sm font-medium">
-          Mín. seguidores
-          <input name="minSeguidores" type="number" min={0} defaultValue={filtros.minSeguidores} className={campo} />
-        </label>
-        <button className="self-end rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover">
-          Buscar
-        </button>
-      </form>
+      <div className="mt-6">
+        {/* key: ao navegar para outra busca, a barra recomeça com os filtros da URL */}
+        <Spotlight
+          key={qs(1)}
+          inicial={filtros}
+          salvos={await filtrosSalvos(empresa.recrutador.id)}
+          mostrarSalvos={mostrarSalvos}
+        />
+      </div>
 
       {erro && (
-        <p role="alert" className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p role="alert" className="alerta mt-6">
           {erro}
+        </p>
+      )}
+
+      {!buscou && (
+        <p className="mt-6 text-sm text-muted">
+          Cada busca confirmada conta no limite do plano. Para refazer uma anterior sem digitar,{" "}
+          <Link href="/historico" className="font-semibold text-primary hover:underline">
+            abra o histórico
+          </Link>
+          .
         </p>
       )}
 
@@ -123,15 +98,35 @@ async function Conteudo({ searchParams }: { searchParams: Promise<Params> }) {
         <section className="mt-8">
           <p className="text-sm text-muted">
             {r.total.toLocaleString("pt-BR")} perfis encontrados
-            {r.total > MAX_PAGINAS * 12 && " (o GitHub exibe até 1.000)"}. Dados públicos, sujeitos a estarem incompletos.
+            {r.total > MAX_PAGINAS * POR_PAGINA &&
+              ` (exibindo os ${MAX_PAGINAS * POR_PAGINA} primeiros; refine os filtros para ver outros)`}
+            . Dados públicos, sujeitos a estarem incompletos.
           </p>
+          {(ocultos > 0 || mostrarSalvos) && (
+            <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <span className="selo-salvo">
+                <EyeOff size={12} />
+                {mostrarSalvos
+                  ? "Mostrando também quem a empresa já salvou"
+                  : `${ocultos} já ${ocultos === 1 ? "salvo oculto" : "salvos ocultos"} nesta página`}
+              </span>
+              <Link href={qs(pagina, !mostrarSalvos)} className="font-semibold text-primary hover:underline">
+                {mostrarSalvos ? "Ocultar já salvos" : "Mostrar"}
+              </Link>
+            </p>
+          )}
 
-          {r.perfis.length === 0 ? (
-            <p className="mt-6 text-muted">Nenhum candidato para esses filtros.</p>
+          {visiveis.length === 0 ? (
+            <div className="card mt-6 flex flex-col items-center gap-3 p-12 text-center text-muted">
+              <SearchX size={32} className="text-primary" />
+              {ocultos > 0 ? "Todos os candidatos desta página já estão salvos." : "Nenhum candidato para esses filtros."}
+            </div>
           ) : (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {r.perfis.map((p) => (
-                <CardCandidato key={p.login} p={p} favorito={favoritos.has(p.login)} />
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {visiveis.map((p, i) => (
+                <div key={p.login} className="entra" style={{ "--n": Math.min(i, 11) } as React.CSSProperties}>
+                  <CardCandidato p={p} favorito={salvos.has(p.login)} aviso={salvos.get(p.login)} />
+                </div>
               ))}
             </div>
           )}
@@ -139,16 +134,16 @@ async function Conteudo({ searchParams }: { searchParams: Promise<Params> }) {
           {r.paginas > 1 && (
             <nav className="mt-8 flex items-center justify-center gap-4 text-sm" aria-label="Paginação">
               {pagina > 1 && (
-                <Link href={qs(pagina - 1)} className="font-semibold text-primary hover:underline">
-                  ← Anterior
+                <Link href={qs(pagina - 1)} className="btn btn-outline">
+                  <ArrowLeft size={16} /> Anterior
                 </Link>
               )}
               <span className="text-muted">
                 Página {pagina} de {r.paginas}
               </span>
               {pagina < r.paginas && (
-                <Link href={qs(pagina + 1)} className="font-semibold text-primary hover:underline">
-                  Próxima →
+                <Link href={qs(pagina + 1)} className="btn btn-outline">
+                  Próxima <ArrowRight size={16} className="seta" />
                 </Link>
               )}
             </nav>

@@ -28,7 +28,7 @@ export async function cadastrar(_: Estado, f: FormData): Promise<Estado> {
   const gratuito = await db.plano.upsert({
     where: { nome: "Gratuito" },
     update: {},
-    create: { nome: "Gratuito", limiteBuscasMes: 20, limiteFavoritos: 10 },
+    create: { nome: "Gratuito", limiteBuscasMes: 20, limiteFavoritos: 10, limiteRecrutadores: 2, limiteComparar: 2 },
   });
 
   let id: number;
@@ -44,7 +44,7 @@ export async function cadastrar(_: Estado, f: FormData): Promise<Estado> {
   }
 
   await criarSessao(id);
-  redirect("/painel");
+  redirect("/perfis");
 }
 
 export async function entrar(_: Estado, f: FormData): Promise<Estado> {
@@ -60,7 +60,7 @@ export async function entrar(_: Estado, f: FormData): Promise<Estado> {
   }
 
   await criarSessao(empresa.id);
-  redirect("/painel");
+  redirect("/perfis");
 }
 
 export async function sair() {

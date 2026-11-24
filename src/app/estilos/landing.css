@@ -1,0 +1,21 @@
+/* Estilos específicos de: landing (/). Tokens e classes base ficam em globals.css. */
+
+/* Único momento autoral: o texto da abertura sai do desfoque e o cartão 3D gira até a posição de repouso. */
+@keyframes hero-texto {
+  from { opacity: 0; transform: translateY(16px); filter: blur(8px); }
+}
+@keyframes hero-card {
+  from { opacity: 0; transform: perspective(1100px) translateY(32px) rotateY(-26deg) rotateX(10deg) scale(0.94); }
+}
+.hero-texto { animation: hero-texto var(--dur-3) var(--ease-out) both; }
+.hero-card { animation: hero-card 900ms var(--ease-out) 120ms both; transform-origin: 30% 50%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-texto, .hero-card { animation: none; }
+}
+
+/* Pastas de exemplo: em telas de toque não há hover, então já mostram as folhas para fora. */
+@media (hover: none) {
+  .pastas-demo .pasta-frente { transform: perspective(700px) rotateX(-16deg); }
+  .pastas-demo .pasta-papel { transform: translateY(calc(-34% + var(--i) * 13%)) rotate(calc((var(--i) - 1) * 5deg)); }
+}

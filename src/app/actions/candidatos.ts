@@ -19,7 +19,7 @@ export async function alternarFavorito(login: string): Promise<string | undefine
     if (limite >= 0 && (await db.favorito.count({ where: { empresaId: empresa.id } })) >= limite) {
       return `Limite de ${limite} favoritos do seu plano atingido.`;
     }
-    await db.favorito.create({ data: { empresaId: empresa.id, githubLogin: login } });
+    await db.favorito.create({ data: { empresaId: empresa.id, githubLogin: login, recrutadorId: empresa.recrutador.id } });
   }
   refresh();
 }
@@ -31,7 +31,8 @@ export async function salvarAvaliacao(login: string, _: Estado, f: FormData): Pr
   const texto = String(f.get("texto") ?? "").trim();
   const notaBruta = String(f.get("nota") ?? "");
   const nota = notaBruta ? Number(notaBruta) : null;
-  const valores = { texto, nota: notaBruta };
+  const privada = f.get("privada") === "1";
+  const valores = { texto, nota: notaBruta, privada: privada ? "1" : "" };
 
   if (!texto) return { erro: "Escreva a observação.", valores };
   if (texto.length > 2000) return { erro: "A observação pode ter até 2000 caracteres.", valores };
@@ -39,13 +40,15 @@ export async function salvarAvaliacao(login: string, _: Estado, f: FormData): Pr
     return { erro: "A nota deve ser de 1 a 5.", valores };
   }
 
-  await db.avaliacao.create({ data: { empresaId: empresa.id, githubLogin: login, nota, texto } });
+  await db.avaliacao.create({ data: { empresaId: empresa.id, recrutadorId: empresa.recrutador.id, githubLogin: login, nota, texto, privada } });
   refresh();
 }
 
 export async function excluirAvaliacao(id: number) {
   const empresa = await empresaAtual();
-  // O empresaId no filtro impede apagar avaliação de outra empresa.
-  await db.avaliacao.deleteMany({ where: { id, empresaId: empresa.id } });
+  // Só o autor exclui (ou qualquer um, se o perfil do autor foi removido); o empresaId barra outras empresas.
+  await db.avaliacao.deleteMany({
+    where: { id, empresaId: empresa.id, OR: [{ recrutadorId: empresa.recrutador.id }, { recrutadorId: null }] },
+  });
   refresh();
 }

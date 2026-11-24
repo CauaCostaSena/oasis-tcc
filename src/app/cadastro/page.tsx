@@ -8,6 +8,7 @@ export default function Cadastro() {
   return (
     <FormularioAuth
       titulo="Cadastrar empresa"
+      subtitulo="Crie a conta da sua empresa e comece a buscar."
       acao={cadastrar}
       botao="Criar conta"
       campos={[

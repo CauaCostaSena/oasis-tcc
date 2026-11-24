@@ -1,0 +1,35 @@
+/* Estilos específicos de: casca do app, início, busca e histórico. Tokens e classes base ficam em globals.css. */
+
+/* Barra do topo no celular é sólida (a navegação fixa fica embaixo); na lateral do desktop volta o vidro. */
+.casca-barra { background: var(--background); }
+@media (min-width: 48rem) {
+  .casca-barra { background: color-mix(in srgb, var(--background) 86%, transparent); backdrop-filter: blur(10px); }
+}
+
+/* Barra de busca: o anel de foco é o sinal de que ela está pronta para digitar. */
+.card.spot { transition: border-color var(--dur-2) ease, box-shadow var(--dur-2) var(--ease-out); }
+.card.spot:focus-within { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); }
+
+/* Linha de sugestão ativa (teclado ou mouse). */
+.sugestao[aria-selected="true"] { background: var(--primary-soft); }
+
+/* Chip de linguagem do estado vazio: liga e desliga o filtro. */
+.chip-opcao {
+  display: inline-flex; align-items: center; min-height: 2rem; border-radius: 9999px; padding: 0.25rem 0.8rem;
+  border: 1px solid var(--border); background: var(--surface); color: var(--foreground);
+  font-size: 0.8125rem; font-weight: 500; cursor: pointer;
+  transition: border-color var(--dur-1) ease, background-color var(--dur-1) ease, color var(--dur-1) ease, transform var(--dur-1) var(--ease-out);
+}
+.chip-opcao:hover { border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); color: var(--primary); }
+.chip-opcao:active { transform: scale(0.96); }
+.chip-opcao[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+
+/* Sem display aqui: a marcação decide (hidden md:inline-flex), porque este CSS vence as utilidades do Tailwind. */
+kbd.tecla {
+  align-items: center; gap: 0.2rem; border-radius: 0.4rem; border: 1px solid var(--border);
+  background: var(--surface-2); padding: 0.05rem 0.4rem; font-family: var(--font-geist-mono), monospace; font-size: 0.6875rem; color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card.spot, .chip-opcao { transition: none; }
+}

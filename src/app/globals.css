@@ -1,14 +1,54 @@
 @import "tailwindcss";
+@import "./estilos/landing.css";
+@import "./estilos/acesso.css";
+@import "./estilos/app.css";
+@import "./estilos/analise.css";
 
+/* Tema escuro é o padrão; o claro entra com data-tema="claro" no <html> (ver BotaoTema). */
 :root {
-  --background: #f7fbfa;
-  --foreground: #10242a;
-  --muted: #5b7279;
+  --background: #050b0b;
+  --surface: #0c1716;
+  --surface-2: #132422;
+  --border: #1f3532;
+  --foreground: #ecf7f4;
+  --muted: #8ea8a3;
+  --primary: #2dd4bf;
+  --primary-hover: #5eead4;
+  --primary-soft: rgb(45 212 191 / 0.12);
+  --on-primary: #03201c;
+  --danger: #fca5a5;
+  --danger-soft: rgb(248 113 113 / 0.12);
+  --brilho: rgb(45 212 191 / 0.10);
+  --sombra: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 12px 28px -18px rgb(0 0 0 / 0.8);
+  color-scheme: dark;
+
+  /* Movimento: saída exponencial; curto para controles, médio para superfícies, longo para o momento autoral. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-1: 140ms;
+  --dur-2: 240ms;
+  --dur-3: 480ms;
+
+  /* Raios: cards 16px, controles 12px, pílulas só em chips e switches. */
+  --r-card: 1rem;
+  --r-controle: 0.75rem;
+}
+:root[data-tema="claro"] {
+  --background: #f2f8f7;
   --surface: #ffffff;
-  --border: #d9e8e6;
+  --surface-2: #e8f2f0;
+  --border: #d3e3e0;
+  --foreground: #07201d;
+  --muted: #55706b;
   --primary: #0f766e;
-  --primary-hover: #115e59;
-  --primary-soft: #d9f2ee;
+  --primary-hover: #0d5f59;
+  --primary-soft: #d7f1ec;
+  --on-primary: #ffffff;
+  --danger: #b91c1c;
+  --danger-soft: #fee2e2;
+  --brilho: rgb(15 118 110 / 0.08);
+  --sombra: 0 1px 2px rgb(7 32 29 / 0.06), 0 12px 28px -20px rgb(7 32 29 / 0.35);
+  color-scheme: light;
 }
 
 @theme inline {
@@ -16,34 +56,271 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
+  --color-on-primary: var(--on-primary);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-sora);
 }
 
+html { scroll-behavior: smooth; scrollbar-color: var(--border) transparent; }
+/* Um único brilho no topo, que rola com a página (fixed repintava a cada rolagem). */
 body {
-  background: var(--background);
+  background: radial-gradient(70rem 32rem at 70% -12rem, var(--brilho), transparent 70%) no-repeat, var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  caret-color: var(--primary);
+  transition: background-color var(--dur-2) ease, color var(--dur-2) ease;
+}
+h1, h2, .display { font-family: var(--font-sora), var(--font-geist-sans), sans-serif; letter-spacing: -0.025em; text-wrap: balance; }
+p { text-wrap: pretty; }
+a { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+table, input, .num, .display { font-variant-numeric: tabular-nums; }
+::selection { background: var(--primary); color: var(--on-primary); }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; border: 2px solid var(--background); }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Ícones (lucide): 12 em chips, 16 em botões e texto, 18 em navegação e botões só de ícone, 20+ em destaque. */
+
+/* ---------- Botões ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  min-height: 2.5rem; border-radius: var(--r-controle); padding: 0.6rem 1.1rem;
+  font-size: 0.875rem; font-weight: 600; line-height: 1.2; white-space: nowrap; cursor: pointer;
+  border: 1px solid transparent; user-select: none; -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-1) var(--ease-out), background-color var(--dur-2) ease, border-color var(--dur-2) ease, color var(--dur-2) ease, box-shadow var(--dur-2) ease;
+}
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn svg { width: 1rem; height: 1rem; flex-shrink: 0; transition: transform var(--dur-2) var(--ease-out); }
+.btn:hover svg.seta { transform: translateX(3px); }
+.btn-primary { background: var(--primary); color: var(--on-primary); box-shadow: 0 1px 0 rgb(255 255 255 / 0.25) inset, 0 6px 14px -8px rgb(0 0 0 / 0.6); }
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+.btn-outline { border-color: var(--border); background: var(--surface); color: var(--foreground); }
+.btn-outline:hover:not(:disabled) { border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); color: var(--primary); }
+.btn-ghost { color: var(--muted); }
+.btn-ghost:hover:not(:disabled) { color: var(--foreground); background: var(--primary-soft); }
+.btn-icone { padding: 0.55rem; min-width: 2.5rem; }
+.btn-icone svg { width: 1.125rem; height: 1.125rem; }
+.btn-perigo:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+
+/* ---------- Superfícies ---------- */
+/* Elevação declarada uma vez: a borda. Sem sombra larga por baixo e sem blur em cada card. */
+.card {
+  border-radius: var(--r-card); border: 1px solid var(--border); background: var(--surface);
+  transition: border-color var(--dur-2) ease, background-color var(--dur-2) ease;
+}
+.card-hover:hover { border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); background: color-mix(in srgb, var(--surface-2) 55%, var(--surface)); }
+/* Flutuantes (menus, pop-ups) usam sombra com deslocamento em vez de só borda. */
+.flutuante { border-radius: var(--r-card); border: 1px solid var(--border); background: var(--surface); box-shadow: var(--sombra); }
+/* Só para barras fixas: o conteúdo rola por baixo, por isso o blur tem função. */
+.vidro { background: color-mix(in srgb, var(--background) 86%, transparent); backdrop-filter: blur(10px); }
+.chip {
+  display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 9999px;
+  background: var(--primary-soft); color: var(--primary);
+  padding: 0.25rem 0.7rem; font-size: 0.75rem; font-weight: 600; line-height: 1.3;
+}
+.chip svg { width: 0.75rem; height: 0.75rem; flex-shrink: 0; }
+.chip-neutro { background: var(--surface-2); color: var(--muted); }
+/* Texto de apoio sob um título (substitui as antigas etiquetas acima dos títulos). */
+.subtitulo { color: var(--muted); font-size: 0.9375rem; line-height: 1.5; }
+/* Rótulo de campo ou de grupo; nunca acima de um título. */
+.rotulo { color: var(--muted); font-size: 0.8125rem; font-weight: 500; }
+
+/* ---------- Formulários ---------- */
+.field {
+  width: 100%; min-height: 2.5rem; border-radius: var(--r-controle); border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--foreground);
+  padding: 0.65rem 0.9rem; font-size: 0.875rem; outline: none;
+  transition: border-color var(--dur-2) ease, box-shadow var(--dur-2) ease;
+}
+.field:hover:not(:focus) { border-color: color-mix(in srgb, var(--muted) 45%, var(--border)); }
+.field::placeholder { color: var(--muted); opacity: 0.7; }
+.field:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.alerta { border-radius: var(--r-controle); background: var(--danger-soft); color: var(--danger); padding: 0.6rem 0.9rem; font-size: 0.875rem; }
+
+/* ---------- Card 3D (Tilt) ---------- */
+.tilt { perspective: 900px; }
+.tilt-in {
+  position: relative; height: 100%;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-style: preserve-3d; will-change: transform;
+}
+.tilt[data-ativo] .tilt-in { transition-duration: 0.08s; }
+.tilt-brilho {
+  pointer-events: none; position: absolute; inset: 0; border-radius: inherit; z-index: 5;
+  background: radial-gradient(22rem circle at var(--gx, 50%) var(--gy, 50%), rgb(255 255 255 / 0.16), transparent 55%);
+  opacity: 0; transition: opacity 0.3s ease;
+}
+.tilt[data-ativo] .tilt-brilho { opacity: 1; }
+
+/* ---------- Pasta ---------- */
+.pasta { position: relative; aspect-ratio: 5 / 4; }
+.pasta-fundo {
+  position: absolute; inset: 14% 0 0 0; border-radius: 0 1.4rem 1.4rem 1.4rem;
+  background: linear-gradient(135deg, var(--pc1, #0f766e), var(--pc2, #134e4a) 60%, var(--pc3, #2dd4bf));
+}
+.pasta-fundo::before {
+  content: ""; position: absolute; left: 0; bottom: calc(100% - 1px); width: 44%; height: 18%;
+  border-radius: 1rem 1.6rem 0 0; background: var(--pc1, #0f766e);
+}
+.pasta-papel {
+  position: absolute; left: 7%; right: 7%; top: 20%; height: 58%;
+  display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.55rem 0.7rem;
+  border-radius: 0.8rem; background: #f6fbfa; color: #07201d; font-size: 0.72rem; font-weight: 600;
+  box-shadow: 0 6px 16px -8px rgb(0 0 0 / 0.5);
+  transform: translateY(calc(var(--i) * 9%)) scale(calc(0.9 + var(--i) * 0.05));
+  transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.pasta-frente {
+  position: absolute; inset: 36% 0 0 0; padding: 1rem 1.1rem;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  border-radius: 1.4rem; border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+  backdrop-filter: blur(16px) saturate(1.4);
+  transform-origin: bottom; transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.2, 1), box-shadow 0.4s ease;
+}
+.pasta:hover .pasta-frente, .pasta:focus-within .pasta-frente, .pasta[data-aberta] .pasta-frente {
+  transform: perspective(700px) rotateX(-16deg); box-shadow: 0 -10px 30px -18px var(--primary);
+}
+.pasta:hover .pasta-papel, .pasta:focus-within .pasta-papel, .pasta[data-aberta] .pasta-papel {
+  transform: translateY(calc(-34% + var(--i) * 13%)) rotate(calc((var(--i) - 1) * 5deg));
 }
 
-/* Entrada suave ao rolar; some para quem prefere menos movimento. */
-.reveal {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+/* ---------- Movimento ---------- */
+@keyframes flutuar { 50% { transform: translate(var(--dx, 0), -18px) rotate(var(--rot, 0deg)); } }
+.flutua { animation: flutuar var(--t, 7s) ease-in-out infinite; }
+
+@keyframes esteira { to { transform: translateX(-50%); } }
+.esteira { display: flex; width: max-content; animation: esteira 32s linear infinite; }
+.esteira:hover { animation-play-state: paused; }
+
+@keyframes brilho-esqueleto { to { background-position: -200% 0; } }
+.esqueleto {
+  border-radius: var(--r-card);
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%) 0 0 / 200% 100%;
+  animation: brilho-esqueleto 1.4s linear infinite;
 }
-.reveal.visible {
-  opacity: 1;
-  transform: none;
+
+@keyframes encher { from { transform: scaleX(0); } }
+.barra { height: 0.4rem; border-radius: 9999px; background: var(--surface-2); overflow: hidden; }
+.barra > span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transform-origin: left; animation: encher 0.9s var(--ease-out) both; }
+
+@keyframes entrar { from { opacity: 0; transform: translateY(14px); } }
+.entra { animation: entrar var(--dur-3) var(--ease-out) both; animation-delay: calc(var(--n, 0) * 50ms); }
+
+/* Sem texto em gradiente: a ênfase vem do tamanho e do peso. */
+.titulo-gigante { font-family: var(--font-sora), sans-serif; font-weight: 800; line-height: 1; letter-spacing: -0.035em; color: var(--primary); }
+
+/* ---------- Cores das séries nos gráficos (paleta validada para daltonismo; ver ComparacaoView) ---------- */
+:root { --serie-1: #3987e5; --serie-2: #d95926; --serie-3: #199e70; --serie-4: #c98500; --serie-5: #d55181; --serie-6: #0ca30c; }
+:root[data-tema="claro"] { --serie-1: #2a78d6; --serie-2: #eb6834; --serie-3: #1baf7a; --serie-4: #eda100; --serie-5: #e87ba4; --serie-6: #008300; }
+
+/* ---------- Switch ---------- */
+.switch { position: relative; display: inline-flex; flex-shrink: 0; width: 2.5rem; height: 1.4rem; }
+.switch input { position: absolute; inset: 0; z-index: 1; margin: 0; opacity: 0; cursor: pointer; }
+.switch span {
+  width: 100%; border-radius: 9999px; border: 1px solid var(--border); background: var(--surface-2);
+  transition: background-color var(--dur-2) ease, border-color var(--dur-2) ease;
 }
+.switch span::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: calc(1.4rem - 6px); height: calc(1.4rem - 6px);
+  border-radius: 9999px; background: var(--muted);
+  transition: transform var(--dur-2) var(--ease-out), background-color var(--dur-2) ease;
+}
+.switch input:checked + span { background: var(--primary); border-color: var(--primary); }
+.switch input:checked + span::after { transform: translateX(1.1rem); background: var(--on-primary); }
+.switch input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* ---------- Checkbox neon: borda que corre, brilho e partículas ao marcar ---------- */
+.neon-check { position: relative; display: inline-block; flex-shrink: 0; width: 1.5rem; height: 1.5rem; }
+.neon-check input { position: absolute; inset: 0; z-index: 2; margin: 0; opacity: 0; cursor: pointer; }
+.neon-check .cx {
+  position: absolute; inset: 0; overflow: hidden; border-radius: 0.4rem;
+  border: 2px solid var(--border); background: var(--surface-2);
+  transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.neon-check svg {
+  position: absolute; inset: 2px; fill: none; stroke: var(--primary); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 40; stroke-dashoffset: 40; transition: stroke-dashoffset 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.neon-check .cx i { position: absolute; background: var(--primary); opacity: 0; }
+.neon-check .cx i:nth-of-type(1) { top: 0; left: -100%; width: 100%; height: 1px; animation: corre-x 2s linear infinite; }
+.neon-check .cx i:nth-of-type(2) { top: -100%; right: 0; width: 1px; height: 100%; animation: corre-y 2s linear 0.5s infinite; }
+.neon-check .cx i:nth-of-type(3) { bottom: 0; left: 100%; width: 100%; height: 1px; animation: corre-x 2s linear 1s infinite reverse; }
+.neon-check .cx i:nth-of-type(4) { top: 100%; left: 0; width: 1px; height: 100%; animation: corre-y 2s linear 1.5s infinite reverse; }
+@keyframes corre-x { to { transform: translateX(200%); } }
+@keyframes corre-y { to { transform: translateY(200%); } }
+.neon-check b {
+  position: absolute; top: 50%; left: 50%; width: 3px; height: 3px; border-radius: 9999px;
+  background: var(--primary); box-shadow: 0 0 6px var(--primary); opacity: 0; pointer-events: none;
+}
+@keyframes particula {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(0); }
+}
+.neon-check input:checked ~ .cx { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 14px -3px var(--primary); }
+.neon-check input:checked ~ .cx svg { stroke-dashoffset: 0; }
+.neon-check input:checked ~ .cx i { opacity: 1; }
+.neon-check input:checked ~ b { animation: particula 0.6s ease-out; }
+.neon-check input:focus-visible ~ .cx { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* ---------- Candidato já salvo: linha neon laranja que circula o card ---------- */
+@property --ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes orbitar { to { --ang: 360deg; } }
+.neon-salvo { position: relative; border-radius: var(--r-card); box-shadow: 0 0 0 1px rgb(254 95 47 / 0.35); }
+.neon-salvo::before, .neon-salvo::after {
+  content: ""; position: absolute; inset: -2px; z-index: 6; padding: 2px; border-radius: calc(var(--r-card) + 2px); pointer-events: none;
+  background: conic-gradient(from var(--ang), transparent 0 60%, #fe5f2f 80%, #ffd9cc 90%, #fe5f2f 95%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: orbitar 3.2s linear infinite;
+}
+.neon-salvo::after { filter: blur(7px); }
+.selo-salvo {
+  display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 9999px; padding: 0.25rem 0.7rem;
+  background: rgb(254 95 47 / 0.14); color: #fe5f2f; font-size: 0.75rem; font-weight: 600;
+}
+:root[data-tema="claro"] .selo-salvo { color: #c2410c; }
+
+/* ---------- Pop-up de filtros (<dialog>) ---------- */
+dialog.popup {
+  margin: auto; width: min(46rem, calc(100vw - 2rem)); max-height: min(44rem, calc(100dvh - 2rem));
+  border-radius: 1.25rem; border: 1px solid var(--border); background: var(--surface); color: var(--foreground);
+  padding: 0; overflow: hidden; box-shadow: 0 24px 60px -24px rgb(0 0 0 / 0.7);
+}
+dialog.popup[open] { display: flex; flex-direction: column; animation: abrir-popup var(--dur-2) var(--ease-out); }
+dialog.popup::backdrop { background: rgb(0 0 0 / 0.55); backdrop-filter: blur(6px); }
+@keyframes abrir-popup { from { opacity: 0; transform: translateY(16px) scale(0.96); filter: blur(6px); } }
+
+/* Notificações (Sonner) seguem o tema do site. */
+html [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--surface); --normal-text: var(--foreground); --normal-border: var(--border);
+  --border-radius: var(--r-controle);
+}
+html [data-sonner-toast] [data-icon] { color: var(--primary); }
+html [data-sonner-toast][data-type="error"] [data-icon] { color: var(--danger); }
+
+.tema-claro-so { display: none; }
+:root[data-tema="claro"] .tema-claro-so { display: block; }
+:root[data-tema="claro"] .tema-escuro-so { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
-  .reveal {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
+  html { scroll-behavior: auto; }
+  .flutua, .esteira, .esqueleto, .barra > span, .entra, .titulo-gigante { animation: none; }
+  .neon-salvo::before, .neon-salvo::after, .neon-check .cx i, .neon-check b, dialog.popup[open] { animation: none; }
+  .neon-salvo::before { background: #fe5f2f; }
+  .neon-salvo::after { display: none; }
+  .tilt-in, .pasta-papel, .pasta-frente, .btn, .card { transition: none; }
+  .tilt-in { transform: none; }
 }
